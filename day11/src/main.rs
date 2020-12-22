@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::time::Instant;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -125,7 +126,7 @@ fn main() {
 
     // seats_a and seats_b are the same now so it doesn't matter which
     let final_occupied_seats = seats_a
-        .iter()
+        .par_iter()
         .filter(|seat| **seat == Seat::Occupied)
         .count();
 
@@ -175,7 +176,7 @@ fn main() {
 
     // seats_a and seats_b are the same now so it doesn't matter which
     let final_occupied_seats = seats_a
-        .iter()
+        .par_iter()
         .filter(|seat| **seat == Seat::Occupied)
         .count();
 
@@ -193,7 +194,7 @@ fn main() {
     );
     println!(
         "time to complete rule 2: {:?}",
-        time_rule2_finished - time_mapped
+        time_rule2_finished - time_rule1_finished
     );
     println!("total time: {:?}", time_rule2_finished - time_start);
 }
@@ -205,7 +206,7 @@ fn next(
     visible_seats: fn(&[Position], &[Seat], usize) -> usize,
 ) -> Vec<Seat> {
     current_seats
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(current_, seat)| match *seat {
             Seat::Empty => {
@@ -230,7 +231,7 @@ fn next(
 fn adjacent_occupied(positions: &[Position], current_seats: &[Seat], current_: usize) -> usize {
     let Position { column, row } = positions[current_];
     positions
-        .iter()
+        .par_iter()
         .enumerate()
         // not this position
         .filter(|(_, position)| !(position.column == column && position.row == row))
@@ -249,8 +250,8 @@ fn adjacent_occupied(positions: &[Position], current_seats: &[Seat], current_: u
 fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize) -> usize {
     let Position { column, row } = positions[current_];
     let this = positions[current_];
-    let iter = positions
-        .iter()
+    let iterator = positions
+        .par_iter()
         .enumerate()
         // not this position
         .filter(|(_, position)| !(position.column == column && position.row == row))
@@ -259,7 +260,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         // ignore floor (only look at occupied or empty)
         .filter(|(entity, _)| current_seats[*entity] != Seat::Floor);
 
-    let up = iter
+    let up = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::Up(_)))
         .min_by_key(|(_, dir)| {
@@ -271,7 +272,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let up_right = iter
+    let up_right = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::UpRight(_)))
         .min_by_key(|(_, dir)| {
@@ -283,7 +284,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let right = iter
+    let right = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::Right(_)))
         .min_by_key(|(_, dir)| {
@@ -295,7 +296,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let down_right = iter
+    let down_right = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::DownRight(_)))
         .min_by_key(|(_, dir)| {
@@ -307,7 +308,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let down = iter
+    let down = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::Down(_)))
         .min_by_key(|(_, dir)| {
@@ -319,7 +320,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let down_left = iter
+    let down_left = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::DownLeft(_)))
         .min_by_key(|(_, dir)| {
@@ -331,7 +332,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let left = iter
+    let left = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::Left(_)))
         .min_by_key(|(_, dir)| {
@@ -343,7 +344,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
         })
         .map_or(false, |(entity, _)| current_seats[entity] == Seat::Occupied);
 
-    let up_left = iter
+    let up_left = iterator
         .clone()
         .filter(|(_, dir)| matches!(dir, Direction::UpLeft(_)))
         .min_by_key(|(_, dir)| {
@@ -358,7 +359,7 @@ fn los_occupied(positions: &[Position], current_seats: &[Seat], current_: usize)
     [
         up, up_right, right, down_right, down, down_left, left, up_left,
     ]
-    .iter()
+    .par_iter()
     .filter(|d| **d)
     .count()
 }
@@ -620,12 +621,12 @@ fn print_occupancy(
 ) {
     let mut s = String::with_capacity(seats.len());
     seats
-        .iter()
+        .par_iter()
         .enumerate()
         .collect::<Vec<_>>()
         .chunks_exact(columns)
         .for_each(|chunk| {
-            chunk.iter().for_each(|(current_, seat)| match *seat {
+            chunk.par_iter().for_each(|(current_, seat)| match *seat {
                 Seat::Empty => {
                     let neighbours = visible_seats(&positions, seats, *current_);
                     let to_occupy = neighbours == 0;
@@ -669,12 +670,12 @@ fn print_visible(
 ) {
     let mut s = String::with_capacity(seats.len());
     seats
-        .iter()
+        .par_iter()
         .enumerate()
         .collect::<Vec<_>>()
         .chunks_exact(columns)
         .for_each(|chunk| {
-            chunk.iter().for_each(|(current_, seat)| match *seat {
+            chunk.par_iter().for_each(|(current_, seat)| match *seat {
                 Seat::Empty => {
                     let neighbours = visible_seats(&positions, seats, *current_);
                     let to_occupy = neighbours == 0;
