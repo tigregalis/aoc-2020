@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum Seat {
     Empty,
@@ -25,11 +27,14 @@ struct Position {
 /// cargo run --package day11 --release -Z package-features --features print_occupancy --features print_visible
 /// ```
 fn main() {
+    let time_start = Instant::now();
+
     let contents =
         std::fs::read_to_string("day11/input").expect("Something went wrong reading the file");
     #[cfg(any(feature = "print_occupancy", feature = "print_visible"))]
     const COLUMNS: usize = 90;
 
+    let time_file_read = Instant::now();
     // let contents = r#"
     // L.LL.LL.LL
     // LLLLLLL.LL
@@ -63,6 +68,8 @@ fn main() {
             })
         })
         .unzip();
+
+    let time_mapped = Instant::now();
 
     // --------------------------------------------
 
@@ -124,6 +131,8 @@ fn main() {
 
     println!("final occupied seats (rule 1): {}\n", final_occupied_seats);
 
+    let time_rule1_finished = Instant::now();
+
     // --------------------------------------------
 
     let tolerance = 5;
@@ -172,7 +181,21 @@ fn main() {
 
     println!("final occupied seats (rule 2): {}\n", final_occupied_seats);
 
+    let time_rule2_finished = Instant::now();
+
     drop(seats);
+
+    println!("time to read file: {:?}", time_file_read - time_start);
+    println!("time to map data: {:?}", time_mapped - time_file_read);
+    println!(
+        "time to complete rule 1: {:?}",
+        time_rule1_finished - time_mapped
+    );
+    println!(
+        "time to complete rule 2: {:?}",
+        time_rule2_finished - time_mapped
+    );
+    println!("total time: {:?}", time_rule2_finished - time_start);
 }
 
 fn next(
